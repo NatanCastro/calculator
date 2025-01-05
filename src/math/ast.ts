@@ -45,19 +45,18 @@ function newASTTree(stem: ASTBranch): ASTTree {
 function getPrecedence(token: MathOperatorType): number {
   switch (token) {
     case MathOperatorType.Subtract:
-      return 1
     case MathOperatorType.Sum:
-      return 2
+      return 1
+    case MathOperatorType.Mod:
     case MathOperatorType.Multiply:
-      return 3
     case MathOperatorType.Divide:
+      return 2
+    case MathOperatorType.Percent:
+      return 3
+    case MathOperatorType.Root:
       return 4
     case MathOperatorType.Exponent:
       return 5
-    case MathOperatorType.Root:
-      return 6
-    case MathOperatorType.Mod:
-      return 7
     default:
       throw new Error("Unexpected token")
   }
