@@ -7,7 +7,7 @@ export enum ActionType {
   Percent = 'Percent',
   Mod = 'Mod',
   Pi = 'Pi',
-  Square = 'Square',
+  Exponent = 'Exponent',
   Root = 'Root',
   OpenBlock = 'OpenBlock',
   CloseBlock = 'CloseBlock',

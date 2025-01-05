@@ -1,91 +1,106 @@
-import type { ASTNode, ASTTree } from "./ast";
-import { TokenType } from "./tokenizer";
+import { Err, Ok, Result, Some } from "ts-results"
+import { createNode, type ASTBranch, type ASTNode, type ASTNodeNumber, type ASTNodeOperator, type ASTTree } from "./ast"
+import { MathNumberType, MathOperatorType } from "./tokenizer"
 
-
-function createNode(type: TokenType, value: string, parent: ASTNode | null = null, left: ASTNode | null = null, right: ASTNode | null = null): ASTNode {
-  return {
-    type,
-    value,
-    parent,
-    left,
-    right,
-  }
+function createNumberNode(value: string): ASTNodeNumber {
+  return createNode(MathNumberType.Number, value) as ASTNodeNumber
 }
 
-function replaceNode(newNode: ASTNode, oldNode: ASTNode) {
+function replaceNode(newNode: ASTNode, oldNode: ASTNode): ASTNode {
   const parent = oldNode.parent
-  if (parent === null) {
-    return
+  if (parent.none) {
+    return newNode
   }
-  if (parent.left === oldNode) {
-    parent.left = newNode
-  } else {
-    parent.right = newNode
+  const parentUnwrapped = parent.unwrap()
+  if (parentUnwrapped.left.some && parentUnwrapped.left.unwrap() === oldNode) {
+    parentUnwrapped.left = Some(newNode)
+    newNode.parent = parent
+    return newNode
   }
-  newNode.parent = parent
+  if (parentUnwrapped.right.some && parentUnwrapped.right.unwrap() === oldNode) {
+    parentUnwrapped.right = Some(newNode)
+    newNode.parent = parent
+    return newNode
+  }
+  return newNode
 }
 
-function valueAsNumber(node: ASTNode) {
-  if (node.type === TokenType.Number) {
-    return parseFloat(node.value)
+function calculate(node: ASTNodeOperator): Result<number, Error> {
+  if (node.left.none || node.right.none) {
+    return Err(new Error("Invalid operation"))
   }
-  if (node.type === TokenType.Pi) {
-    return Math.PI
-  }
-  throw new Error("Not a number")
-}
+  const left = node.left.unwrap()
+  const right = node.right.unwrap()
 
-function calculate(node: ASTNode) {
-  if (node.left === null || node.right === null) {
-    throw new Error("Invalid operation");
+  if (left.id !== "number" || right.id !== "number") {
+    return Err(new Error("Invalid operation"))
   }
-  switch (node.type) {
-    case TokenType.Sum:
-      return valueAsNumber(node.left) + valueAsNumber(node.right)
-    case TokenType.Subtract:
-      return valueAsNumber(node.left) - valueAsNumber(node.right)
-    case TokenType.Multiply:
-      return valueAsNumber(node.left) * valueAsNumber(node.right)
-    case TokenType.Divide:
-      return valueAsNumber(node.left) / valueAsNumber(node.right)
-    default:
-      throw new Error("Unexpected token")
-  }
-}
 
-function isValue(node: ASTNode) {
-  return node.type === TokenType.Number || node.type === TokenType.Pi
-}
-
-export function interpret(ASTTree: ASTTree) {
-  function aux(node: ASTNode) {
-    if (node.type === TokenType.Number) {
-      return valueAsNumber(node)
+  try {
+    switch (node.type) {
+      case MathOperatorType.Sum:
+        return Ok(left.value + right.value)
+      case MathOperatorType.Subtract:
+        return Ok(left.value - right.value)
+      case MathOperatorType.Multiply:
+        return Ok(left.value * right.value)
+      case MathOperatorType.Divide:
+        return Ok(left.value / right.value)
+      case MathOperatorType.Percent:
+        return Ok((left.value / 100) * right.value)
+      case MathOperatorType.Mod:
+        return Ok(left.value - Math.floor(left.value / right.value) * right.value)
+      case MathOperatorType.Exponent:
+        return Ok(Math.pow(left.value, right.value))
+      case MathOperatorType.Root:
+        return Ok(Math.sqrt(right.value))
     }
+  } catch (error: any) {
+    return Err(error)
+  }
+}
 
-    if (node.left === null || node.right === null) {
-      throw new Error("Invalid operation");
+export function interpret(ASTTree: ASTTree): number {
+  function traverse(node: ASTNode): number {
+    if (node.id === "number") {
+      return node.value
     }
+    if (node.left.none || node.right.none) {
+      throw new Error("Invalid operation")
+    }
+    const left = node.left.unwrap()
+    const right = node.right.unwrap()
 
-    if (isValue(node.left) && isValue(node.right)) {
-      const result = calculate(node)
-      const newNode = createNode(TokenType.Number, result.toString())
-      replaceNode(newNode, node)
-
-      if (newNode.parent !== null) {
-        return aux(newNode.parent)
+    if (node.id === "operator") {
+      if (left.id === "number" && right.id === "number") {
+        const result = calculate(node)
+        if (result.err) {
+          throw result.val
+        }
+        const resultNode = createNumberNode(result.unwrap().toString())
+        const newNode = replaceNode(resultNode, node)
+        if (newNode.parent.none) {
+          return traverse(newNode)
+        }
+        return traverse(newNode.parent.unwrap())
       }
-      return aux(newNode)
-    }
 
-    if (node.left !== null && node.left.type !== TokenType.Number) {
-      return aux(node.left)
+      if (left.id === "operator") {
+        return traverse(left)
+      }
+      if (right.id === "operator") {
+        return traverse(right)
+      }
     }
-    if (node.right !== null && node.right.type !== TokenType.Number) {
-      return aux(node.right)
-    }
-
-    return aux(node)
+    throw new Error("Unexpected node")
   }
-  return aux(ASTTree.root)
+
+  function aux(branch: ASTBranch): number {
+    if (branch.branches.length !== 0) {
+      branch.branches.forEach(aux)
+    }
+    const node = branch.head.unwrap()
+    return traverse(node)
+  }
+  return aux(ASTTree.stem)
 }

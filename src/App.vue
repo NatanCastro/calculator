@@ -7,7 +7,7 @@ import { resolveAction, Action, Actions, ActionType } from './action'
 const buttons = ref([
   'del', '(', ')', 'mod', 'π',
   '7', '8', '9', '/', '√',
-  '4', '5', '6', '*', 'x²',
+  '4', '5', '6', '*', '^',
   '1', '2', '3', '-',
   '0', ',', '%', '+', 'enter'
 ])
