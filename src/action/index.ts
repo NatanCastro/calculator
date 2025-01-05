@@ -1,5 +1,4 @@
-import { analyze, createAST, tokensFromActions } from "../math"
-import { interpret } from "../math/interpreter"
+import { run } from "../math"
 import { ActionType, type Actions } from "./types"
 export * from "./types"
 
@@ -47,24 +46,12 @@ export function resolveAction(actionList: Actions, value: string) {
       break
     case "enter":
       printActions(actionList)
-      const optionTokens = tokensFromActions(actionList)
-      if (optionTokens.none) {
-        console.log("Error")
-        break
+      const result = run(actionList)
+      if (result.err) {
+        console.error(result.val)
+      } else {
+        console.log(result.unwrap())
       }
-      const tokens = optionTokens.unwrap()
-
-      const error = analyze(structuredClone(tokens))
-      if (error.some) {
-        console.log(error.unwrap())
-        break
-      }
-
-      const ast = createAST(structuredClone(tokens))
-      console.log(ast)
-
-      const result = interpret(ast)
-      console.log(result)
       break
     default:
       if (actionList.length > 0 && actionList[actionList.length - 1].type != ActionType.Number && value == "," && value == ",") {

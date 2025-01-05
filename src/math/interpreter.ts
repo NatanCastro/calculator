@@ -53,7 +53,16 @@ function calculate(node: ASTNodeOperator): Result<number, Error> {
       case MathOperatorType.Exponent:
         return Ok(Math.pow(left.value, right.value))
       case MathOperatorType.Root:
-        return Ok(Math.sqrt(right.value))
+        if (!isFinite(right.value)) {
+          return Ok(0)
+        }
+
+        if (right.value % 2 === 0) {
+          return Ok(Math.pow(left.value, 1 / right.value))
+        } else {
+          const result = Math.pow(left.value, 1 / right.value)
+          return Ok(result * right.value > 0 ? 1 : -1)
+        }
     }
   } catch (error: any) {
     return Err(error)

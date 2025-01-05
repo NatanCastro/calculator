@@ -1,6 +1,6 @@
 import { Err, None, Ok, Result, Some, type Option } from "ts-results"
 import { next } from "./utils"
-import { isMathNumber, isMathOperator, isMathOperatorType, isMathValueArray, MathNumberType, MathOperatorType } from "./tokenizer"
+import { isMathBlock, isMathNumber, isMathOperator, isMathOperatorType, MathBlockType, MathNumberType, MathOperatorType } from "./tokenizer"
 import type { MathExpression, MathNumber, MathOperator } from "./tokenizer"
 
 export type ASTNodeOperator = {
@@ -127,6 +127,28 @@ function hasLowerPrecedence(node: ASTNodeOperator, token: MathOperator) {
   return getPrecedence(node.type) < getPrecedence(token.type)
 }
 
+function extractBlock(tokens: MathExpression): [MathExpression, MathExpression] {
+  function aux(tokens: MathExpression, block: MathExpression, blockCount: number): [MathExpression, MathExpression] {
+    const result = next(tokens)
+    if (result.none) {
+      return [tokens, []]
+    }
+    const [token, rest] = result.unwrap()
+
+    if (isMathBlock(token)) {
+      if (token.type === MathBlockType.OpenParenthesis) {
+        blockCount++
+      } else if (token.type === MathBlockType.CloseParenthesis && blockCount > 0) {
+        blockCount--
+      } else if (token.type === MathBlockType.CloseParenthesis && blockCount === 0) {
+        return [block, rest]
+      }
+    }
+    return aux(rest, block.concat([token]), blockCount)
+  }
+  return aux(tokens, [], 0)
+}
+
 type NumberCaseFunction = (token: MathNumber, branch: ASTBranch, lastOperation: Option<ASTNodeOperator>) => [ASTBranch, Option<ASTNodeOperator>]
 
 type OperatorCaseFunction = (token: MathOperator, head: ASTBranch, lastOperation: Option<ASTNodeOperator>) => [ASTBranch, Option<ASTNodeOperator>]
@@ -236,22 +258,28 @@ export function createAST(tokens: MathExpression): ASTTree {
     const [token, rest] = result.unwrap()
 
     if (branch.head.none) {
-      if (isMathValueArray(token)) {
-        const newBranch = aux(token, newASTBranch())
-        if (newBranch.err) {
-          return newBranch
+      if (isMathBlock(token)) {
+        if (token.type === MathBlockType.CloseParenthesis) {
+          return Err(new Error("Unexpected close parenthesis"))
         }
-        const result = next(rest)
 
+        const [block, restTokens] = extractBlock(rest)
+        const newBranchResult = aux(block, newASTBranch())
+        if (newBranchResult.err) {
+          return newBranchResult
+        }
+
+        const result = next(restTokens)
         if (result.none) {
-          branch = newBranch.unwrap()
+          branch = newBranchResult.unwrap()
           return Ok(branch)
         }
+
         const [head, nextTokens] = result.unwrap()
 
         if (isMathOperator(head)) {
           const headNode = createNode(head.type, head.value) as ASTNodeOperator
-          const headBranch = newASTBranch(Some(headNode), [newBranch.unwrap()])
+          const headBranch = newASTBranch(Some(headNode), [newBranchResult.unwrap()])
           return aux(nextTokens, headBranch, Some(headNode))
         } else {
           return Err(new Error("Ureachable, operator expected"))
@@ -282,10 +310,12 @@ export function createAST(tokens: MathExpression): ASTTree {
       const [newBranch, newLastOperation] = result.unwrap()(token, branch, lastOperation)
       return aux(rest, newBranch, newLastOperation)
     } else {
-      const resultBranch = aux(token, newASTBranch())
+      const [block, restTokens] = extractBlock(rest)
+      const resultBranch = aux(block, newASTBranch())
       if (resultBranch.err) {
         return resultBranch
       }
+
       const newBranch = resultBranch.unwrap()
       const newBranchHead = newBranch.head.unwrap()
 
@@ -297,7 +327,7 @@ export function createAST(tokens: MathExpression): ASTTree {
       }
 
       branch.branches.push(newBranch)
-      return aux(rest, branch, lastOperation)
+      return aux(restTokens, branch, lastOperation)
     }
   }
 

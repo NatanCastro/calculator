@@ -24,8 +24,15 @@ export enum MathOperatorType {
 
 export type MathOperator = { id: "operator", type: MathOperatorType, value: string }
 
+export enum MathBlockType {
+  OpenParenthesis = "OpenParenthesis",
+  CloseParenthesis = "CloseParenthesis",
+}
 
-export type MathValue = MathNumber | MathOperator | MathValue[]
+export type MathBlock = { id: "block", type: MathBlockType, value: string }
+
+
+export type MathValue = MathNumber | MathOperator | MathBlock
 
 export type MathExpression = MathValue[]
 
@@ -60,27 +67,31 @@ function createOperator(type: MathOperatorType): MathOperator {
   }
 }
 
+function createBlock(type: MathBlockType): MathBlock {
+  switch (type) {
+    case MathBlockType.OpenParenthesis:
+      return { id: "block", type, value: "(" } satisfies MathBlock
+    case MathBlockType.CloseParenthesis:
+      return { id: "block", type, value: ")" } satisfies MathBlock
+    default:
+      throw new Error("Unexpected type")
+  }
+}
+
 export function isMathNumber(value: MathValue): value is MathNumber {
-  return typeof value === 'object' && "id" in value && value.id === "number";
+  return value.id === "number";
 }
 
 export function isMathOperator(value: MathValue): value is MathOperator {
-  return typeof value === 'object' && "id" in value && value.id === "operator";
+  return value.id === "operator";
 }
 
-export function isMathValueArray(value: MathValue): value is MathValue[] {
-  return Array.isArray(value);
+export function isMathBlock(value: MathValue): value is MathBlock {
+  return value.id === "block";
 }
-
 
 export function mathExressionToString(tokens: MathExpression): string {
-  return tokens.map(token => {
-    if (isMathNumber(token) || isMathOperator(token)) {
-      return token.value
-    } else if (isMathValueArray(token)) {
-      return "(" + mathExressionToString(token) + ")"
-    }
-  }).join("")
+  return tokens.map(token => token.value).join("")
 }
 
 export function isMathOperatorType(type: MathOperatorType | MathNumberType): type is MathOperatorType {
@@ -136,31 +147,6 @@ function extractNumber(actions: Actions): Option<[MathNumber, Actions]> {
   return aux(actions, "")
 }
 
-function extractBlock(actions: Actions): Option<Actions> {
-  function aux(actions: Actions, blockCount: number, acc: Actions): Actions {
-    const result = next(actions)
-    if (result.none) {
-      return acc
-    }
-    const [action, rest] = result.unwrap()
-
-    if (action.type === ActionType.OpenBlock) {
-      blockCount++
-    }
-    if (action.type === ActionType.CloseBlock && blockCount > 0) {
-      blockCount--
-    }
-    if (action.type === ActionType.CloseBlock && blockCount === 0) {
-      return acc
-    }
-
-    acc.push(action)
-    return aux(rest, blockCount, acc)
-  }
-  const block = aux(actions, 0, [])
-  return block.length > 0 ? Some(block) : None
-}
-
 export function tokensFromActions(actions: Actions): Option<MathExpression> {
   function aux(actions: Actions, tokens: MathExpression): Option<MathExpression> {
     const result = next(actions)
@@ -195,16 +181,9 @@ export function tokensFromActions(actions: Actions): Option<MathExpression> {
       case ActionType.Root:
         return aux(rest, tokens.concat([createOperator(MathOperatorType.Root)]))
       case ActionType.OpenBlock:
-        const block = extractBlock(actions)
-        if (block.none) {
-          return None
-        }
-        const list = tokensFromActions(block.unwrap())
-        if (list.none) {
-          return None
-        }
-        tokens.push(list.unwrap())
-        return aux(rest, tokens)
+        return aux(rest, tokens.concat([createBlock(MathBlockType.OpenParenthesis)]))
+      case ActionType.CloseBlock:
+        return aux(rest, tokens.concat([createBlock(MathBlockType.CloseParenthesis)]))
       default:
         return aux(rest, tokens)
     }
