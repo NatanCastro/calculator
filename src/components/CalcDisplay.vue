@@ -50,12 +50,8 @@ watchEffect(() => {
 <style scoped lang="scss">
 #display {
   width: 100%;
-  height: 80px;
+  height: 100%;
   background-color: #332255;
   border-radius: 8px;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 </style>

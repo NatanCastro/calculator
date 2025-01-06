@@ -21,12 +21,15 @@ function handleButtonPress(event: PointerEvent) {
   event.preventDefault()
   const buttonValue = (event.target as HTMLElement).dataset['value']
   const actionsList = actions.value
-  resolveAction(actionsList, buttonValue, (number: number) => { result.value = Some(number) })
+  resolveAction(actionsList, buttonValue, (number) => { result.value = Some(number) })
 }
 </script>
+
 <template>
-  <section id="app">
-    <CalcDisplay :actions="actions" :result="result" />
+  <section id="calculator">
+    <div id="display">
+      <CalcDisplay :actions="actions" :result="result" />
+    </div>
     <section id="buttons">
       <CalcButton v-for="(button, i) of buttons" :key="i" :class="{ enter: button == 'enter', button }" :value="button"
         :data-value="button" :action="handleButtonPress" />
@@ -35,13 +38,20 @@ function handleButtonPress(event: PointerEvent) {
 </template>
 
 <style scoped lang="scss">
-#app {
-  width: 800px;
+#calculator {
   gap: 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background: #242424;
+  padding: 1.5rem;
+}
+
+#display {
+  width: 100%;
+  min-height: 2rem;
+  flex-grow: 1;
 }
 
 #buttons {
@@ -54,7 +64,7 @@ function handleButtonPress(event: PointerEvent) {
   .button {
     background-color: #332255;
     border-radius: 8px;
-    padding: 4px;
+    padding: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -64,5 +74,20 @@ function handleButtonPress(event: PointerEvent) {
     grid-column: 5;
     grid-row: 4 / span 2;
   }
+}
+
+@media (max-width: 600px) {
+  #calculator {
+    gap: 1rem;
+    padding: 1rem;
+    width: 100vw;
+    height: 100vh;
+    padding: 1rem;
+  }
+
+  #buttons .button {
+    padding: 1rem .5rem;
+  }
+
 }
 </style>
