@@ -6,7 +6,7 @@ export function printActions(actionList: Actions) {
   console.log(actionList.map(action => action.value).join(""))
 }
 
-export function resolveAction(actionList: Actions, value: string) {
+export function resolveAction(actionList: Actions, value: string, setResult: (number: number) => void) {
   switch (value) {
     case "+":
       actionList.push({ type: ActionType.Sum, value })
@@ -45,13 +45,14 @@ export function resolveAction(actionList: Actions, value: string) {
       actionList.pop()
       break
     case "enter":
-      printActions(actionList)
-      const result = run(actionList)
+      const list = Array.from(actionList)
+      const result = run(list)
       if (result.err) {
         console.error(result.val)
       } else {
         console.log(result.unwrap())
       }
+      setResult(result.unwrap())
       break
     default:
       if (actionList.length > 0 && actionList[actionList.length - 1].type != ActionType.Number && value == "," && value == ",") {

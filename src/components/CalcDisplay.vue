@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Reactive, ref, computed } from 'vue'
+import { Reactive, ref, Ref, computed, watchEffect } from 'vue'
 import { Action, Actions, ActionType } from '../action/types'
+import { Option } from 'ts-results'
 
 const props = defineProps<{
   actions: Reactive<Actions>
+  result: Reactive<Option<number>>
 }>()
 
 function stringifyActions() {
@@ -12,15 +14,36 @@ function stringifyActions() {
   }, "")
 }
 
-const displayText = computed<string>(() => {
+const expressionText = computed<string>(() => {
   return stringifyActions()
 })
+
+type ShowState = "expression" | "result"
+
+const showState = ref<ShowState>("expression")
+
+function changeShowState() {
+  showState.value = showState.value == "expression" ? "result" : "expression"
+}
+
+watchEffect(() => {
+  if (props.result.none) {
+    showState.value = "expression"
+  } else {
+    showState.value = "result"
+  }
+});
 
 </script>
 
 <template>
-  <div id="display">
-    {{ displayText }}
+  <div id="display" @click="changeShowState">
+    <span v-if="result.none || showState == 'expression'">
+      {{ expressionText }}
+    </span>
+    <span v-else>
+      {{ result.unwrap() }}
+    </span>
   </div>
 </template>
 
