@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CalcDisplay from './CalcDisplay.vue'
 import CalcButton from './CalcButton.vue'
-import { ref, reactive, Reactive, watchEffect } from 'vue'
-import { resolveAction, Action, Actions, ActionType } from '../action'
+import { ref } from 'vue'
+import { resolveAction, type Actions } from '../../action'
 import { Option, None, Some } from 'ts-results'
 
 const buttons = ref([
@@ -17,9 +17,9 @@ const actions = ref<Actions>([])
 
 const result = ref<Option<number>>(None)
 
-function handleButtonPress(event: PointerEvent) {
+function handleButtonPress(event: Event) {
   event.preventDefault()
-  const buttonValue = (event.target as HTMLElement).dataset['value']
+  const buttonValue = (event.target as HTMLElement).dataset['value'] as string
   const actionsList = actions.value
   resolveAction(actionsList, buttonValue, (number) => { result.value = Some(number) })
 }
@@ -39,6 +39,7 @@ function handleButtonPress(event: PointerEvent) {
 
 <style scoped lang="scss">
 #calculator {
+  width: 350px;
   gap: 1rem;
   display: flex;
   flex-direction: column;

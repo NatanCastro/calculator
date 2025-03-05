@@ -6,7 +6,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <button @click="(event) => action(event)" class="button" :data-value="value">
+  <button @click="(event) => props.action(event)" class="button" :data-value="props.value">
     {{ value }}
   </button>
 </template>

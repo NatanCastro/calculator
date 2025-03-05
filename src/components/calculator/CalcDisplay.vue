@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Reactive, ref, Ref, computed, watchEffect } from 'vue'
-import { Action, Actions, ActionType } from '../action/types'
+import { type Reactive, ref, computed, watchEffect } from 'vue'
+import { type Actions } from '../../action'
 import { Option } from 'ts-results'
 
 const props = defineProps<{
@@ -49,9 +49,16 @@ watchEffect(() => {
 
 <style scoped lang="scss">
 #display {
+  display: flex;
+  align-items: center;
   width: 100%;
   height: 100%;
   background-color: #332255;
   border-radius: 8px;
+  padding: 8px;
+
+  span {
+    word-break: break-all;
+  }
 }
 </style>
